@@ -7,9 +7,7 @@ logger = logging.getLogger(__name__)
 try:
     gdrive = gdrive_auth()
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+    #TODO: file and directory handling in google drive using files.py module
 
 except InitAuthError as e:
     logger.error(e.__str__())
