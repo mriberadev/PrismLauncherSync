@@ -1,1 +1,4 @@
 settings.yaml
+/PrismLauncherSync.egg-info/
+/.venv/
+/.idea/
