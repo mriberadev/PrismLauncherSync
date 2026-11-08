@@ -1,0 +1,2 @@
+class InitAuthError(Exception):
+    pass
