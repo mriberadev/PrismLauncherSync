@@ -70,7 +70,7 @@ def get_user_credentials_from_flow(auth_flow: Flow) -> Credentials:
 
 def save_user_credentials_to_file(user_credentials_path: Path, user_credentials: Credentials) -> None:
     try:
-        with open(user_credentials_path.__str__(), "w") as creds_file:
+        with user_credentials_path.open("w") as creds_file:
             creds_file.write(user_credentials.to_json())
     except OSError:
         raise UserCredentialsFileError("Could not open user credentials file")
