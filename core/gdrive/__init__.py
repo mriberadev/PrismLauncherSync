@@ -1,2 +1,2 @@
 from .auth import get_user_credentials
-from .exception import InitAuthError
+from .exception import GoogleAuthError

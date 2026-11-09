@@ -20,7 +20,7 @@ try:
 
 except argparse.ArgumentError as e:
     logger.error(e.__str__())
-except gdrive.InitAuthError as e:
+except gdrive.GoogleAuthError as e:
     logger.error(e.__str__())
 
 

@@ -1,14 +1,14 @@
-class InitAuthError(Exception):
+class GoogleAuthError(Exception):
     pass
 
-class ClientFileNotFoundError(InitAuthError):
+class ClientFileNotFoundError(GoogleAuthError):
     pass
 
-class AuthTimeoutError(InitAuthError):
+class AuthTimeoutError(GoogleAuthError):
     pass
 
-class UserCredentialsFileError(InitAuthError):
+class UserCredentialsFileError(GoogleAuthError):
     pass
 
-class AuthUserAccessDeniedError(InitAuthError):
+class AuthUserAccessDeniedError(GoogleAuthError):
     pass
