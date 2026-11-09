@@ -25,15 +25,15 @@ def get_user_credentials() -> Credentials:
         except ValueError:
             raise UserCredentialsFileError("User credentials file in unknown format")
 
-    try:
-        if (user_credentials and not user_credentials.valid
-                and user_credentials.expired and user_credentials.refresh_token):
+    if user_credentials:
+        if not user_credentials.valid and user_credentials.expired and user_credentials.refresh_token:
             user_credentials.refresh(Request())
+        return user_credentials
 
-        else:
-            auth_flow = get_flow_from_client_file(client_file_path, scopes)
-            user_credentials = get_user_credentials_from_flow(auth_flow)
-            save_user_credentials_to_file(user_credentials_path, user_credentials)
+    try:
+        auth_flow = get_flow_from_client_file(client_file_path, scopes)
+        user_credentials = get_user_credentials_from_flow(auth_flow)
+        save_user_credentials_to_file(user_credentials_path, user_credentials)
 
         return user_credentials
 
