@@ -68,7 +68,7 @@ def get_user_credentials_from_flow(auth_flow: Flow) -> Credentials:
         raise AuthUserAccessDeniedError("Access denied by user")
 
 
-def save_user_credentials_to_file(user_credentials_path: Path, user_credentials: Credentials) -> str:
+def save_user_credentials_to_file(user_credentials_path: Path, user_credentials: Credentials) -> None:
     try:
         with open(user_credentials_path.__str__(), "w") as creds_file:
             creds_file.write(user_credentials.to_json())
