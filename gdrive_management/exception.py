@@ -1,2 +1,0 @@
-class InitAuthError(Exception):
-    pass

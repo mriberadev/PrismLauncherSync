@@ -1,15 +1,14 @@
 import logging
-from gdrive_management.auth import gdrive_auth
-from gdrive_management.exception import InitAuthError
+import core.gdrive as gdrive
 
 logger = logging.getLogger(__name__)
 
 try:
-    gdrive = gdrive_auth()
 
-    #TODO: file and directory handling in google drive using files.py module
+    gdrive_creds = gdrive.get_user_credentials()
 
-except InitAuthError as e:
+
+except gdrive.InitAuthError as e:
     logger.error(e.__str__())
 
 
