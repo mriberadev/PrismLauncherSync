@@ -1,14 +1,14 @@
 class InitAuthError(Exception):
     pass
 
-class ClientFileNotFoundError(Exception):
+class ClientFileNotFoundError(InitAuthError):
     pass
 
-class AuthTimeoutError(Exception):
+class AuthTimeoutError(InitAuthError):
     pass
 
-class UserCredentialsFileError(Exception):
+class UserCredentialsFileError(InitAuthError):
     pass
 
-class AuthUserAccessDeniedError(Exception):
+class AuthUserAccessDeniedError(InitAuthError):
     pass
