@@ -5,7 +5,7 @@ from pathlib import Path
 
 from oauthlib.oauth2 import AccessDeniedError
 
-from .exception import (GoogleAuthError, ClientFileNotFoundError, AuthTimeoutError, UserCredentialsFileError,
+from .exception import (AppAuthError, ClientFileNotFoundError, AuthTimeoutError, UserCredentialsFileError,
                         AuthUserAccessDeniedError)
 
 
@@ -43,7 +43,7 @@ def get_user_credentials() -> Credentials:
             ClientFileNotFoundError,
             UserCredentialsFileError,
     ) as e:
-        raise GoogleAuthError(e.__str__())
+        raise AppAuthError(e.__str__())
 
 
 def get_flow_from_client_file(client_file_path: Path, scopes: list[str]) -> Flow:

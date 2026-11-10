@@ -16,11 +16,6 @@ try:
 
     prism_instance = prismlauncher.Instance.from_file_uri(args.instance)
 
-    gdrive_creds = gdrive.get_user_credentials()
 
 except argparse.ArgumentError as e:
     logger.error(e.__str__())
-except gdrive.GoogleAuthError as e:
-    logger.error(e.__str__())
-
-
