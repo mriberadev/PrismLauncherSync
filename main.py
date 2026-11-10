@@ -15,6 +15,7 @@ try:
     args = arg_parser.parse_args()
 
     prism_instance = prismlauncher.Instance.from_file_uri(args.instance)
+    gdrive_manager = gdrive.FileManager.load_files()
 
 
 except argparse.ArgumentError as e:
