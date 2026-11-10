@@ -1,9 +1,13 @@
-import logging
+import colorlog
 import argparse
 
 from core import gdrive, prismlauncher
+from utils import logs
+
+logs.config_logger()
 
 logger = logging.getLogger(__name__)
+logger = colorlog.getLogger(__name__)
 
 try:
     arg_parser = argparse.ArgumentParser(

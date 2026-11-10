@@ -1,5 +1,5 @@
-import logging
-from typing import Any
+import colorlog
+from typing import Self
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -14,7 +14,7 @@ class ApiError(Exception):
 class Api:
     __service: str = "drive"
     __version: str = "v3"
-    __logger = logging.getLogger(__name__)
+    __logger = colorlog.getLogger(__name__)
 
     def __init__(
             self,
