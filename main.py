@@ -5,8 +5,6 @@ from core import gdrive, prismlauncher
 from utils import logs
 
 logs.config_logger()
-
-logger = logging.getLogger(__name__)
 logger = colorlog.getLogger(__name__)
 
 try:
