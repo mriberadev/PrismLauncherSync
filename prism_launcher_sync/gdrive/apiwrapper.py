@@ -8,7 +8,7 @@ from googleapiclient.http import MediaFileUpload
 from . import auth
 
 
-class DriveApiError(HttpError):
+class DriveApiError(Exception):
     pass
 
 
