@@ -1,7 +1,8 @@
 import colorlog
 import argparse
 
-from core import gdrive, prismlauncher
+import gdrive
+import prismlauncher
 from utils import logs
 
 logs.config_logger()
@@ -16,9 +17,16 @@ try:
     arg_parser.add_argument("-i", "--instance", type=str, required=True)
     args = arg_parser.parse_args()
 
+    gd_manager = gdrive.DriveFileManager.load_files()
+
     prism_instance = prismlauncher.Instance.from_file_uri(args.instance)
-    gdrive_manager = gdrive.FileManager.load_files()
+
+    if gd_manager.needs_sync(prism_instance.last_modified):
+        zipped_instance = prism_instance.to_zip()
+        gd_manager.sync(zipped_instance, prism_instance.last_modified)
 
 
 except argparse.ArgumentError as e:
-    logger.error(e.__str__())
+    logger.error(e)
+except prismlauncher.InstanceError as e:
+    logger.error(e)

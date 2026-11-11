@@ -5,9 +5,8 @@ from pathlib import Path
 
 from oauthlib.oauth2 import AccessDeniedError
 
-from .exception import (AppAuthError, ClientFileNotFoundError, AuthTimeoutError, UserCredentialsFileError,
-                        AuthUserAccessDeniedError)
-
+class AppAuthError(Exception):
+    pass
 
 def get_user_credentials() -> Credentials:
     package_dir_path = Path(__file__).parent
@@ -22,8 +21,9 @@ def get_user_credentials() -> Credentials:
     if user_credentials_path.exists():
         try:
             user_credentials = Credentials.from_authorized_user_file(user_credentials_path.__str__(), scopes)
-        except ValueError:
-            raise UserCredentialsFileError("User credentials file in unknown format")
+        except ValueError as e:
+            e.add_note("User credentials file in unknown format")
+            raise
 
     if user_credentials:
         if not user_credentials.valid and user_credentials.expired and user_credentials.refresh_token:
@@ -38,17 +38,17 @@ def get_user_credentials() -> Credentials:
         return user_credentials
 
     except (
-            AuthTimeoutError,
-            AuthUserAccessDeniedError,
-            ClientFileNotFoundError,
-            UserCredentialsFileError,
+            TimeoutError,
+            AccessDeniedError,
+            FileNotFoundError,
+            OSError,
     ) as e:
-        raise AppAuthError(e.__str__())
+        raise AppAuthError("Could not complete auth process") from e
 
 
 def get_flow_from_client_file(client_file_path: Path, scopes: list[str]) -> Flow:
     if not client_file_path.exists():
-        raise ClientFileNotFoundError("Client file was not found")
+        raise FileNotFoundError("Client file was not found")
     return InstalledAppFlow.from_client_secrets_file(
         client_secrets_file=client_file_path.__str__(),
         scopes=scopes,
@@ -62,15 +62,17 @@ def get_user_credentials_from_flow(auth_flow: Flow) -> Credentials:
         credentials = auth_flow.run_local_server()
         return credentials
 
-    except WSGITimeoutError:
-        raise AuthTimeoutError("Authentication timed out")
-    except AccessDeniedError:
-        raise AuthUserAccessDeniedError("Access denied by user")
+    except WSGITimeoutError as e:
+        raise TimeoutError("Authentication timed out") from e
+    except AccessDeniedError as e:
+        e.add_note("Access denied by user")
+        raise
 
 
 def save_user_credentials_to_file(user_credentials_path: Path, user_credentials: Credentials) -> None:
     try:
         with user_credentials_path.open("w") as creds_file:
             creds_file.write(user_credentials.to_json())
-    except OSError:
-        raise UserCredentialsFileError("Could not open user credentials file")
+    except OSError as e:
+        e.add_note("Could not open user credentials file")
+        raise
