@@ -10,8 +10,9 @@ from prism_launcher_sync import config
 
 class Instance(BaseFile):
 
-    def __init__(self, **kwargs):
+    def __init__(self, path: Path, **kwargs):
         super().__init__(**kwargs)
+        self.path = path
 
     @classmethod
     def from_file_uri(cls, uri) -> Self:
@@ -31,12 +32,13 @@ class Instance(BaseFile):
         logger = colorlog.getLogger(__name__)
         dt_suffix = datetime.now().strftime("_%Y%m%d_%H%M%S")
         zip_name = f"{self.name}{dt_suffix}"
+        zip_dst = (config.ZIPFILES_DIR / zip_name).resolve().__str__()
         logger.info(f"Zipping instance {self.name}...")
         zip_file = shutil.make_archive(
-            zip_name,
+            zip_dst,
             format="zip",
-            root_dir=config.ZIPFILES_DIR,
-            base_dir=self.path,
+            root_dir=self.path.parent,
+            base_dir=self.name,
             dry_run=False,
             # logger=logger
         )
