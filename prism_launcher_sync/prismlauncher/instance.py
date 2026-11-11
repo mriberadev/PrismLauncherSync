@@ -5,10 +5,10 @@ from typing import Self
 import shutil
 
 from prism_launcher_sync.base import BaseFile
+from prism_launcher_sync import config
 
 
 class Instance(BaseFile):
-    __tempdir = (Path(__file__).parent / "temp").resolve()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -35,7 +35,7 @@ class Instance(BaseFile):
         zip_file = shutil.make_archive(
             zip_name,
             format="zip",
-            root_dir=self.__tempdir,
+            root_dir=config.ZIPFILES_DIR,
             base_dir=self.path,
             dry_run=True,
             logger=logger

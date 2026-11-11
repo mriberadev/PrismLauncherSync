@@ -1,26 +1,25 @@
+from pathlib import Path
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow, WSGITimeoutError, Flow
-from pathlib import Path
-
 from oauthlib.oauth2 import AccessDeniedError
+
+from prism_launcher_sync import config
+
 
 class AppAuthError(Exception):
     pass
 
-def get_user_credentials() -> Credentials:
-    package_dir_path = Path(__file__).parent
-    resource_dir_path = (package_dir_path / "resource").resolve()
-    client_file_path = (resource_dir_path / "client_secret.json").resolve()
-    user_credentials_path = (resource_dir_path / "user_credentials.json").resolve()
 
+def get_user_credentials() -> Credentials:
     scopes = ["https://www.googleapis.com/auth/drive.file", ]
 
     user_credentials = None
 
-    if user_credentials_path.exists():
+    if config.USER_CREDS_FILE.exists():
         try:
-            user_credentials = Credentials.from_authorized_user_file(user_credentials_path.__str__(), scopes)
+            user_credentials = Credentials.from_authorized_user_file(config.USER_CREDS_FILE.__str__(), scopes)
         except ValueError as e:
             e.add_note("User credentials file in unknown format")
             raise
@@ -31,9 +30,9 @@ def get_user_credentials() -> Credentials:
         return user_credentials
 
     try:
-        auth_flow = get_flow_from_client_file(client_file_path, scopes)
+        auth_flow = get_flow_from_client_file(config.CLIENT_FILE, scopes)
         user_credentials = get_user_credentials_from_flow(auth_flow)
-        save_user_credentials_to_file(user_credentials_path, user_credentials)
+        save_user_credentials_to_file(config.USER_CREDS_FILE, user_credentials)
 
         return user_credentials
 
@@ -47,10 +46,10 @@ def get_user_credentials() -> Credentials:
 
 
 def get_flow_from_client_file(client_file_path: Path, scopes: list[str]) -> Flow:
-    if not client_file_path.exists():
+    if not config.CLIENT_FILE.exists():
         raise FileNotFoundError("Client file was not found")
     return InstalledAppFlow.from_client_secrets_file(
-        client_secrets_file=client_file_path.__str__(),
+        client_secrets_file=config.CLIENT_FILE.__str__(),
         scopes=scopes,
         redirect_uri="http://localhost",
         pkce="S256"

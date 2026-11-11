@@ -4,6 +4,7 @@ from typing import Self
 
 from .apiwrapper import DriveApi, DriveApiError
 from prism_launcher_sync.base import BaseFile
+from prism_launcher_sync import config
 
 
 class DriveFile(BaseFile):
@@ -32,7 +33,6 @@ class FileManagerError(Exception):
 
 
 class DriveFileManager:
-    __app_folder_name = "Prism Launcher Sync"
 
     def __init__(
             self,
@@ -47,9 +47,8 @@ class DriveFileManager:
     @classmethod
     def load_files(cls) -> Self:
         gd_api = DriveApi.build()
-        app_folder_name = cls.__app_folder_name
 
-        app_folder = cls.get_app_folder(gd_api, app_folder_name)
+        app_folder = cls.get_app_folder(gd_api, config.DRIVE_FOLDER)
         app_files = cls.get_app_files(gd_api, app_folder)
 
         return cls(
