@@ -8,7 +8,7 @@ from googleapiclient.http import MediaFileUpload
 from . import auth
 
 
-class DriveApiError(Exception):
+class DriveApiError(HttpError):
     pass
 
 
@@ -31,7 +31,7 @@ class DriveApi:
             return cls(resource)
         except auth.AppAuthError as e:
             cls.__logger.error(e)
-            raise DriveApiError("Could not complete auth process")
+            raise DriveApiError("Could not complete auth process") from e
 
     def list_files(self, query: str | None = None, orderBy: str | None = None) -> list[dict]:
         try:
@@ -55,7 +55,7 @@ class DriveApi:
                     return files
         except HttpError as e:
             self.__logger.error(e)
-            raise DriveApiError("Could not obtain files")
+            raise DriveApiError("Could not obtain files") from e
 
     def create_folder(self, name: str) -> dict:
         try:
@@ -69,7 +69,7 @@ class DriveApi:
             return new_folder
         except HttpError as e:
             self.__logger.error(e)
-            raise DriveApiError(f"Could not create folder '{name}'")
+            raise DriveApiError(f"Could not create folder '{name}'") from e
 
     def upload_file(self, name: str, mimetype: str, src: str, chunked: bool = False, max_attempts: int = 10) -> dict:
         try:
@@ -93,7 +93,7 @@ class DriveApi:
 
         except HttpError as e:
             self.__logger.error(e)
-            raise DriveApiError(f"Could not upload file '{name}'")
+            raise DriveApiError(f"Could not upload file '{name}'") from e
 
     def update_file(self, file_id: str, update_fields: dict) -> dict:
         try:
@@ -108,4 +108,4 @@ class DriveApi:
             return updated_file
         except HttpError as e:
             self.__logger.error(e)
-            raise DriveApiError(f"Could not update file with id: '{file_id}'")
+            raise DriveApiError(f"Could not update file with id: '{file_id}'") from e

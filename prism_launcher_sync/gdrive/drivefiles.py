@@ -73,8 +73,8 @@ class DriveFileManager:
 
             return app_folder
 
-        except DriveApiError:
-            raise FileManagerError("Could not load Google Drive folder data")
+        except DriveApiError as e:
+            raise FileManagerError("Could not load Google Drive folder data") from e
 
     @staticmethod
     def get_app_files(gd_api: DriveApi, app_folder: dict) -> list[dict]:
@@ -83,8 +83,8 @@ class DriveFileManager:
                 query=f"'{app_folder["id"]}' in parents and trashed=false",
                 orderBy="modifiedTime desc"
             )
-        except DriveApiError:
-            raise FileManagerError(f"Could not load Google Drive files in folder {app_folder["name"]}")
+        except DriveApiError as e:
+            raise FileManagerError(f"Could not load Google Drive files in folder {app_folder["name"]}") from e
 
     def needs_sync(self, last_modified: datetime) -> bool:
         return self.last_backup is None or self.last_backup.last_modified != last_modified

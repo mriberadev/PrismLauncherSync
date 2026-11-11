@@ -7,10 +7,6 @@ import shutil
 from prism_launcher_sync.base import BaseFile
 
 
-class InstanceError(Exception):
-    pass
-
-
 class Instance(BaseFile):
     __tempdir = (Path(__file__).parent / "temp").resolve()
 
@@ -21,7 +17,7 @@ class Instance(BaseFile):
     def from_file_uri(cls, uri) -> Self:
         path = Path(uri)
         if not path.exists():
-            raise InstanceError("Could not find instance using provided URI")
+            raise FileNotFoundError("Could not find instance using provided URI")
 
         last_modified = datetime.fromtimestamp(path.stat().st_mtime)
 

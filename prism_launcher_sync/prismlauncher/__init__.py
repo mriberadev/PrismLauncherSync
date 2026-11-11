@@ -1,1 +1,1 @@
-from .instance import Instance, InstanceError
+from .instance import Instance
