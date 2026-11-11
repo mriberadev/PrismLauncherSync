@@ -5,4 +5,9 @@ ZIPFILES_DIR = (ROOT_DIR / "prismlauncher" / "temp").resolve()
 CLIENT_FILE = (ROOT_DIR / "gdrive" / "resource" / "client_secret.json").resolve()
 USER_CREDS_FILE = (ROOT_DIR / "gdrive" / "resource" / "user_credentials.json").resolve()
 
+G_API_SERVICE = "drive"
+G_API_VERSION = "v3"
 DRIVE_FOLDER = "Prism Launcher Sync"
+
+UPLOAD_CHUNK_SIZE = 10 * 1024 * 1024
+MAX_BACKUPS = 5

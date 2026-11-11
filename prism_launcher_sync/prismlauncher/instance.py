@@ -37,8 +37,8 @@ class Instance(BaseFile):
             format="zip",
             root_dir=config.ZIPFILES_DIR,
             base_dir=self.path,
-            dry_run=True,
-            logger=logger
+            dry_run=False,
+            # logger=logger
         )
         logger.info(f"Zipped to {zip_file}")
         return Path(zip_file)

@@ -26,8 +26,10 @@ try:
     gd_manager = gdrive.DriveFileManager.load_files()
 
     if gd_manager.needs_sync(prism_instance.last_modified):
+        logger.info("Sync needed, starting...")
         zipped_instance = prism_instance.to_zip()
         gd_manager.sync(zipped_instance, prism_instance.last_modified)
+        logger.info("Sync complete!")
 
 except (argparse.ArgumentError, FileNotFoundError) as e:
     logger.error(e)

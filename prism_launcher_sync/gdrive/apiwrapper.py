@@ -5,6 +5,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 
+from prism_launcher_sync import config
 from . import auth
 
 
@@ -13,8 +14,8 @@ class DriveApiError(Exception):
 
 
 class DriveApi:
-    __service: str = "drive"
-    __version: str = "v3"
+    __service: str = config.G_API_SERVICE
+    __version: str = config.G_API_VERSION
     __logger = colorlog.getLogger(__name__)
 
     def __init__(
@@ -71,29 +72,46 @@ class DriveApi:
             self.__logger.error(e)
             raise DriveApiError(f"Could not create folder '{name}'") from e
 
-    def upload_file(self, name: str, mimetype: str, src: str, chunked: bool = False, max_attempts: int = 10) -> dict:
+    def upload_file(
+            self,
+            name: str,
+            src: str,
+            parent: str | None = None,
+            chunked: bool = False,
+            max_attempts: int = 10
+    ) -> dict:
         try:
             request = (
                 self.__resource.files()
                 .create(
-                    body={"name": name, "mimeType": mimetype},
-                    media_body=MediaFileUpload(src, mimetype=mimetype, resumable=chunked)
+                    body={"name": name, "parents": parent if parent else []},
+                    media_body=MediaFileUpload(src, resumable=chunked, chunksize=config.UPLOAD_CHUNK_SIZE)
                 )
             )
+            self.__logger.info(f"Starting upload for {name}...")
             if not chunked:
-                return request.execute()
+                new_file = request.execute()
 
-            # Chunk uploads work progressively and will show status updates in console
-            while True:
-                status, response = request.next_chunk(num_retries=max_attempts)
-                if status:
-                    self.__logger.info(f"Uploaded {int(status.progress() * 100)}%")
-                if response is not None:
-                    return response
+            else:
+                # Chunk uploads work progressively and will show status updates in console
+                while True:
+                    status, response = request.next_chunk(num_retries=max_attempts)
+                    if status:
+                        progress = int(status.progress() * 100)
+                        pbar_max = 50
+                        pbar_len = int(status.progress() * pbar_max)
+                        progress_bar = ("#" * pbar_len) + ("-" * (pbar_max - pbar_len))
+                        self.__logger.info(f"Upload progress {progress}% [{progress_bar}]")
+                    if response is not None:
+                        new_file = response
+                        break
+
+            self.__logger.info(f"Upload complete for {name}")
+            return new_file
 
         except HttpError as e:
             self.__logger.error(e)
-            raise DriveApiError(f"Could not upload file '{name}'") from e
+            raise DriveApiError(f"Could not upload {name}") from e
 
     def update_file(self, file_id: str, update_fields: dict) -> dict:
         try:

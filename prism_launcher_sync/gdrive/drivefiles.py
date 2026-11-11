@@ -9,20 +9,28 @@ from prism_launcher_sync import config
 
 class DriveFile(BaseFile):
 
-    def __init__(self, file_id: str, **kwargs):
+    def __init__(self, file_id: str | None, parent_id: str | None, **kwargs):
         super().__init__(**kwargs)
         self.file_id = file_id
+        self.parent_id = parent_id
 
     @classmethod
     def map_from_drive(cls, drive_file: dict) -> Self:
         return cls(
             file_id=drive_file["id"],
+            parent_id=drive_file["parents"][0] if drive_file["parents"] else None,
             name=drive_file["name"],
-            last_modified=datetime.fromisoformat(drive_file["modifiedTime"])
+            last_modified=datetime.fromisoformat(drive_file["modifiedTime"]).replace(tzinfo=None)
         )
 
     def upload(self) -> str:
-        pass
+        gd_api = DriveApi.build()
+        new_drivefile = gd_api.upload_file(
+            name=self.name,
+            parent=self.parent_id,
+            src=self.path.__str__(),
+            chunked=True
+        )
 
     def download(self) -> Path:
         pass
@@ -37,12 +45,10 @@ class DriveFileManager:
     def __init__(
             self,
             folder: DriveFile,
-            files: list[DriveFile],
-            last_backup: DriveFile | None
+            files: list[DriveFile]
     ):
         self.folder = folder
         self.files = files
-        self.last_backup = last_backup
 
     @classmethod
     def load_files(cls) -> Self:
@@ -53,8 +59,7 @@ class DriveFileManager:
 
         return cls(
             DriveFile.map_from_drive(app_folder),
-            [DriveFile.map_from_drive(f) for f in app_files],
-            DriveFile.map_from_drive(app_files[0]) if app_files else None
+            [DriveFile.map_from_drive(f) for f in app_files]
         )
 
     @staticmethod
@@ -86,10 +91,17 @@ class DriveFileManager:
             raise FileManagerError(f"Could not load Google Drive files in folder {app_folder["name"]}") from e
 
     def needs_sync(self, last_modified: datetime) -> bool:
-        return self.last_backup is None or self.last_backup.last_modified != last_modified
+        return not self.files or self.files[0].last_modified != last_modified
 
     def sync(self, zip_file: Path, last_modified: datetime) -> None:
-        if not self.last_backup or self.last_backup.last_modified < last_modified:
-            pass
+        if not self.files or len(self.files) < config.MAX_BACKUPS or self.files[0].last_modified < last_modified:
+            new_file = DriveFile(
+                file_id=None,
+                parent_id=self.folder.file_id,
+                name=zip_file.name,
+                last_modified=last_modified,
+                path=zip_file
+            )
+            new_file.upload()
         else:
             pass
