@@ -27,7 +27,7 @@ class DriveApi:
     def build(cls) -> Self:
         try:
             credentials = auth.get_user_credentials()
-            resource = build(cls.__service, cls.__version, credentials=credentials)
+            resource = build(cls.__service, cls.__version, credentials=credentials, cache_discovery=False)
             return cls(resource)
         except auth.AppAuthError as e:
             cls.__logger.error(e)
