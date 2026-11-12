@@ -22,7 +22,7 @@ class Instance(BaseFile):
         logger = colorlog.getLogger(__name__)
         dt_suffix = datetime.now().strftime("_%Y%m%d_%H%M%S")
         zip_name = f"{self.name}{dt_suffix}"
-        zip_dst = (config.ZIPFILES_DIR / zip_name).resolve().__str__()
+        zip_dst = str((config.ZIPFILES_DIR / zip_name).resolve())
         logger.info(f"Zipping instance {self.name}...")
         zip_file = shutil.make_archive(
             zip_dst,

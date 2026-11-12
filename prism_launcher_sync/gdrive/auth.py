@@ -18,7 +18,7 @@ def get_credentials() -> Credentials:
 
     if config.USER_CREDS_FILE.exists():
         try:
-            creds = Credentials.from_authorized_user_file(config.USER_CREDS_FILE, scopes)
+            creds = Credentials.from_authorized_user_file(str(config.USER_CREDS_FILE), scopes)
         except ValueError as e:
             e.add_note("User credentials file in unknown format")
             raise
