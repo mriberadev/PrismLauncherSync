@@ -32,7 +32,6 @@ class DriveApi:
             resource = build(cls.__service, cls.__version, credentials=credentials, cache_discovery=False)
             return cls(resource)
         except auth.AuthError as e:
-            cls.__logger.error(e)
             raise DriveApiError("Failed to complete auth process") from e
 
     def list_files(self, query: str | None = None, orderBy: str | None = None) -> list[dict]:
@@ -56,7 +55,6 @@ class DriveApi:
                 if page_token is None:
                     return files
         except HttpError as e:
-            self.__logger.error(e)
             raise DriveApiError("Failed to obtain files") from e
 
     def create_folder(self, name: str) -> dict:
@@ -70,7 +68,6 @@ class DriveApi:
             )
             return new_folder
         except HttpError as e:
-            self.__logger.error(e)
             raise DriveApiError(f"Failed to create folder '{name}'") from e
 
     def upload_file(
@@ -110,7 +107,6 @@ class DriveApi:
             return new_file
 
         except HttpError as e:
-            self.__logger.error(e)
             raise DriveApiError(f"Failed to upload {name}") from e
 
     def update_file(self, file_id: str, update_fields: dict) -> dict:
@@ -125,6 +121,4 @@ class DriveApi:
             )
             return updated_file
         except HttpError as e:
-            self.__logger.error(e)
-            raise DriveApiError(f"Could not update file with id: '{file_id}'") from e
             raise DriveApiError(f"Failed to update file with id: '{file_id}'") from e
