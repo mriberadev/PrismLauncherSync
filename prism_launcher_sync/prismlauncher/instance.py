@@ -13,21 +13,12 @@ class Instance(BaseFile):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    @classmethod
-    def from_file_uri(cls, uri) -> Self:
-        path = Path(uri)
-        if not path.exists():
-            raise FileNotFoundError("Could not find instance using provided URI")
+    def to_zip(self) -> Self:
+        if not self.path:
+            raise TypeError("No file to zip")
+        if not self.path.exists():
+            raise FileNotFoundError("File to zip not found")
 
-        last_modified = datetime.fromtimestamp(path.stat().st_mtime)
-
-        return cls(
-            path=path,
-            name=path.name,
-            last_modified=last_modified
-        )
-
-    def to_zip(self) -> Path:
         logger = colorlog.getLogger(__name__)
         dt_suffix = datetime.now().strftime("_%Y%m%d_%H%M%S")
         zip_name = f"{self.name}{dt_suffix}"
@@ -42,4 +33,6 @@ class Instance(BaseFile):
             # logger=logger
         )
         logger.info(f"Zipped to {zip_file}")
-        return Path(zip_file)
+        self.name = zip_name
+        self.path = Path(zip_file)
+        return self
