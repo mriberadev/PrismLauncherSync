@@ -29,8 +29,7 @@ try:
     gd_manager = gdrive.DriveFileManager.load_files()
 
     logger.info("Sync process starting...")
-    zipped_instance = prism_instance.to_zip()
-    gd_manager.sync(zipped_instance.path)
+    gd_manager.sync_instance(prism_instance)
 
     logger.info("Cleaning up temp files...")
     zip_dir = BaseFile.from_src(config.ZIPFILES_DIR)

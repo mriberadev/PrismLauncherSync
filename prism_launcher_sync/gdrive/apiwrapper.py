@@ -122,3 +122,9 @@ class DriveApi:
             return updated_file
         except HttpError as e:
             raise DriveApiError(f"Failed to update file with id: '{file_id}'") from e
+
+    def delete_file(self, file_id: str) -> None:
+        try:
+            self.__resource.files().delete(fileId=file_id).execute()
+        except HttpError as e:
+            raise DriveApiError(f"Failed to delete file with id: '{file_id}'") from e

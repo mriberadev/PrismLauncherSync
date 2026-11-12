@@ -30,9 +30,6 @@ class Instance(BaseFile):
             root_dir=self.path.parent,
             base_dir=self.name,
             dry_run=False,
-            # logger=logger
         )
         logger.info(f"Zipped to {zip_file}")
-        self.name = zip_name
-        self.path = Path(zip_file)
-        return self
+        return self.__class__.from_src(zip_file)

@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from typing import Self
 
+from prismlauncher import Instance
 from .apiwrapper import DriveApi, DriveApiError
 from prism_launcher_sync.base import BaseFile
 from prism_launcher_sync import config
@@ -57,7 +58,15 @@ class DriveFile(BaseFile):
         pass
 
     def delete(self) -> None:
-        pass
+        if not self.file_id:
+            raise AttributeError("DriveFile has no id")
+
+        try:
+            gd_api = DriveApi.build()
+            gd_api.delete_file(file_id=self.file_id)
+
+        except DriveApiError as e:
+            raise DriveFileError(f"Failed to delete {self.name}") from e
 
 
 class DriveFileManagerError(Exception):
@@ -77,18 +86,6 @@ class DriveFileManager:
     @property
     def file_count(self) -> int:
         return len(self.files)
-
-    @property
-    def newest_file(self) -> DriveFile | None:
-        if self.file_count == 0:
-            return None
-        return self.files[0]
-
-    @property
-    def oldest_file(self) -> DriveFile | None:
-        if self.file_count == 0:
-            return None
-        return self.files[-1]
 
     @classmethod
     def load_files(cls) -> Self:
@@ -130,10 +127,25 @@ class DriveFileManager:
         except DriveApiError as e:
             raise DriveFileManagerError(f"Failed to load Google Drive files in folder {app_folder["name"]}") from e
 
-    def sync(self, zip_file: str | os.PathLike[str]) -> None:
-        if 0 < self.file_count < config.MAX_BACKUPS:
-            new_file = DriveFile.from_src(zip_file)
-            new_file.parent_id = self.folder.file_id
-            new_file.upload()
+    def remove_oldest(self) -> None:
+        if self.file_count > 0:
+            try:
+                self.files[-1].delete()
+                self.files.pop()  # Update .files list preserving order
+            except AttributeError:
+                raise
+
+    def sync_instance(self, instance: Instance) -> None:
+        if self.file_count == 0 or self.files[0].dt_modified < instance.dt_modified:
+            src = instance.to_zip().path
+            gd_file = DriveFile.from_src(src)
+            gd_file.parent_id = self.folder.file_id
+            self.files.insert(0, gd_file.upload())  # Update .files list preserving order
         else:
             pass
+
+        if self.file_count > config.MAX_BACKUPS:
+            try:
+                self.remove_oldest()
+            except AttributeError as e:
+                raise DriveFileManagerError("Failed to remove oldest backup") from e
