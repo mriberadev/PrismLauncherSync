@@ -20,7 +20,7 @@ class BaseFile:
     def from_src(cls, src: str | os.PathLike[str]) -> Self:
         path = Path(src)
         if not path.exists():
-            raise FileNotFoundError("Could not find file using provided URI")
+            raise FileNotFoundError("Failed to find file using provided URI")
 
         return cls(
             path=path,
@@ -59,5 +59,5 @@ class BaseFile:
                 _file = self.__class__.from_src(item)
                 _file.remove()
         except OSError as e:
-            e.add_note("Could not clean directory")
+            e.add_note("Failed to clean directory")
             raise

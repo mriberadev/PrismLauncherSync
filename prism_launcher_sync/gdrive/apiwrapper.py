@@ -33,7 +33,7 @@ class DriveApi:
             return cls(resource)
         except auth.AuthError as e:
             cls.__logger.error(e)
-            raise DriveApiError("Could not complete auth process") from e
+            raise DriveApiError("Failed to complete auth process") from e
 
     def list_files(self, query: str | None = None, orderBy: str | None = None) -> list[dict]:
         try:
@@ -57,7 +57,7 @@ class DriveApi:
                     return files
         except HttpError as e:
             self.__logger.error(e)
-            raise DriveApiError("Could not obtain files") from e
+            raise DriveApiError("Failed to obtain files") from e
 
     def create_folder(self, name: str) -> dict:
         try:
@@ -71,7 +71,7 @@ class DriveApi:
             return new_folder
         except HttpError as e:
             self.__logger.error(e)
-            raise DriveApiError(f"Could not create folder '{name}'") from e
+            raise DriveApiError(f"Failed to create folder '{name}'") from e
 
     def upload_file(
             self,
@@ -107,13 +107,11 @@ class DriveApi:
                         self.__logger.info(f"Upload progress 100% [{"#" * pbar_max}]")
                         new_file = response
                         break
-
-            self.__logger.info(f"Upload complete for {name}")
             return new_file
 
         except HttpError as e:
             self.__logger.error(e)
-            raise DriveApiError(f"Could not upload {name}") from e
+            raise DriveApiError(f"Failed to upload {name}") from e
 
     def update_file(self, file_id: str, update_fields: dict) -> dict:
         try:
@@ -129,3 +127,4 @@ class DriveApi:
         except HttpError as e:
             self.__logger.error(e)
             raise DriveApiError(f"Could not update file with id: '{file_id}'") from e
+            raise DriveApiError(f"Failed to update file with id: '{file_id}'") from e

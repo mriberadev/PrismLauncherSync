@@ -51,7 +51,7 @@ class DriveFile(BaseFile):
             return self
 
         except DriveApiError as e:
-            raise DriveFileError(f"Could not upload {self.name}") from e
+            raise DriveFileError(f"Failed to upload {self.name}") from e
 
     def download(self) -> Self:
         pass
@@ -118,7 +118,7 @@ class DriveFileManager:
             return app_folder
 
         except DriveApiError as e:
-            raise DriveFileManagerError("Could not load Google Drive folder data") from e
+            raise DriveFileManagerError("Failed to load Google Drive folder data") from e
 
     @staticmethod
     def get_app_files(gd_api: DriveApi, app_folder: dict) -> list[dict]:
@@ -128,7 +128,7 @@ class DriveFileManager:
                 orderBy="modifiedTime desc"
             )
         except DriveApiError as e:
-            raise DriveFileManagerError(f"Could not load Google Drive files in folder {app_folder["name"]}") from e
+            raise DriveFileManagerError(f"Failed to load Google Drive files in folder {app_folder["name"]}") from e
 
     def sync(self, zip_file: str | os.PathLike[str]) -> None:
         if 0 < self.file_count < config.MAX_BACKUPS:

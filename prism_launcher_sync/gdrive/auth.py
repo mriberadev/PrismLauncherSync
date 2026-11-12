@@ -40,7 +40,7 @@ def get_credentials() -> Credentials:
             FileNotFoundError,
             OSError,
     ) as e:
-        raise AuthError("Could not complete auth process") from e
+        raise AuthError("Failed to complete auth process") from e
 
 
 def request_access(scopes: list[str]) -> Credentials:
@@ -67,5 +67,5 @@ def save_to_file(creds: Credentials) -> None:
         with config.USER_CREDS_FILE.open("w") as creds_file:
             creds_file.write(creds.to_json())
     except OSError as e:
-        e.add_note("Could not open user credentials file")
+        e.add_note("Failed to open user credentials file")
         raise
