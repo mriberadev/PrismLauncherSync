@@ -28,11 +28,16 @@ try:
 
     gd_manager = gdrive.DriveFileManager.load_files()
 
-    if gd_manager.needs_sync(prism_instance.last_modified):
-        logger.info("Sync needed, starting...")
-        zipped_instance = prism_instance.to_zip()
-        gd_manager.sync(zipped_instance, prism_instance.last_modified)
-        logger.info("Sync complete!")
+    logger.info("Sync process starting...")
+    zipped_instance = prism_instance.to_zip()
+    gd_manager.sync(zipped_instance.path)
 
-except (argparse.ArgumentError, FileNotFoundError) as e:
+    logger.info("Cleaning up temp files...")
+    zip_dir = BaseFile.from_uri(config.ZIPFILES_DIR)
+    zip_dir.clean_dir()
+
+    logger.info("Sync complete!")
+
+
+except (argparse.ArgumentError, OSError, TypeError, FileNotFoundError, gdrive.DriveFileManagerError) as e:
     logger.error(e)
