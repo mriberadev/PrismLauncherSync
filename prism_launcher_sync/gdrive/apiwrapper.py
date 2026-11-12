@@ -1,4 +1,5 @@
 import colorlog
+from logging import Logger
 from typing import Self
 
 from googleapiclient.discovery import build
@@ -16,7 +17,7 @@ class DriveApiError(Exception):
 class DriveApi:
     __service: str = config.G_API_SERVICE
     __version: str = config.G_API_VERSION
-    __logger = colorlog.getLogger(__name__)
+    __logger: Logger = colorlog.getLogger(__name__)
 
     def __init__(
             self,
@@ -27,10 +28,10 @@ class DriveApi:
     @classmethod
     def build(cls) -> Self:
         try:
-            credentials = auth.get_user_credentials()
+            credentials = auth.get_credentials()
             resource = build(cls.__service, cls.__version, credentials=credentials, cache_discovery=False)
             return cls(resource)
-        except auth.AppAuthError as e:
+        except auth.AuthError as e:
             cls.__logger.error(e)
             raise DriveApiError("Could not complete auth process") from e
 
@@ -76,7 +77,7 @@ class DriveApi:
             self,
             name: str,
             src: str,
-            parent: str | None = None,
+            parent_id: str | None = None,
             chunked: bool = False,
             max_attempts: int = 10
     ) -> dict:
@@ -84,7 +85,7 @@ class DriveApi:
             request = (
                 self.__resource.files()
                 .create(
-                    body={"name": name, "parents": parent if parent else []},
+                    body={"name": name, "parents": [parent_id] if parent_id else []},
                     media_body=MediaFileUpload(src, resumable=chunked, chunksize=config.UPLOAD_CHUNK_SIZE)
                 )
             )
@@ -96,13 +97,14 @@ class DriveApi:
                 # Chunk uploads work progressively and will show status updates in console
                 while True:
                     status, response = request.next_chunk(num_retries=max_attempts)
+                    pbar_max = 50
                     if status:
                         progress = int(status.progress() * 100)
-                        pbar_max = 50
                         pbar_len = int(status.progress() * pbar_max)
                         progress_bar = ("#" * pbar_len) + ("-" * (pbar_max - pbar_len))
                         self.__logger.info(f"Upload progress {progress}% [{progress_bar}]")
                     if response is not None:
+                        self.__logger.info(f"Upload progress 100% [{"#" * pbar_max}]")
                         new_file = response
                         break
 
