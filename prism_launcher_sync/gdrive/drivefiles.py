@@ -55,7 +55,19 @@ class DriveFile(BaseFile):
             raise DriveFileError(f"Failed to upload {self.name}") from e
 
     def download(self) -> Self:
-        pass
+        if not self.file_id:
+            raise AttributeError("DriveFile has no id")
+        try:
+            gd_api = DriveApi.build()
+            content = gd_api.download_file(file_id=self.file_id)
+
+            self.path = (config.ZIPFILES_DIR / self.name).resolve()
+            with open(self.path, "wb") as dst_file:
+                dst_file.write(content)
+            return self
+
+        except DriveApiError as e:
+            raise DriveFileError(f"Failed to download {self.name}") from e
 
     def delete(self) -> None:
         if not self.file_id:
@@ -142,6 +154,7 @@ class DriveFileManager:
             gd_file.parent_id = self.folder.file_id
             self.files.insert(0, gd_file.upload())  # Update .files list preserving order
         else:
+            self.files[0].download()
             pass
 
         if self.file_count > config.MAX_BACKUPS:

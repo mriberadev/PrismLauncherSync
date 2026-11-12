@@ -1,7 +1,7 @@
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent
-ZIPFILES_DIR = (ROOT_DIR / "prismlauncher" / "temp").resolve()
+ZIPFILES_DIR = (ROOT_DIR / "temp").resolve()
 CLIENT_FILE = (ROOT_DIR / "gdrive" / "resource" / "client_secret.json").resolve()
 USER_CREDS_FILE = (ROOT_DIR / "gdrive" / "resource" / "user_credentials.json").resolve()
 
@@ -12,4 +12,5 @@ G_API_VERSION = "v3"
 DRIVE_FOLDER = "Prism Launcher Sync"
 
 UPLOAD_CHUNK_SIZE = 10 * 1024 * 1024
+DOWNLOAD_CHUNK_SIZE = 20 * 1024 * 1024
 MAX_BACKUPS = 5

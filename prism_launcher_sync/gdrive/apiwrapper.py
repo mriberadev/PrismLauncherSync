@@ -1,13 +1,22 @@
-import colorlog
+import io
 from logging import Logger
+
+import colorlog
 from typing import Self
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 from prism_launcher_sync import config
 from . import auth
+
+
+def make_progress_bar(progress: int | float, max_len: int = 50) -> str:
+    percent = int(progress * 100)
+    done = int(progress * max_len)
+    remaining = int(max_len - done)
+    return f"[{"#" * done}{"-" * remaining}] {percent}%"
 
 
 class DriveApiError(Exception):
@@ -57,6 +66,12 @@ class DriveApi:
         except HttpError as e:
             raise DriveApiError("Failed to obtain files") from e
 
+    def get_file(self, file_id: str) -> dict:
+        try:
+            return self.__resource.files().get(fileId=file_id).execute()
+        except HttpError as e:
+            raise DriveApiError(f"Failed to obtain file with id: '{file_id}") from e
+
     def create_folder(self, name: str) -> dict:
         try:
             new_folder = (
@@ -86,28 +101,38 @@ class DriveApi:
                     media_body=MediaFileUpload(src, resumable=chunked, chunksize=config.UPLOAD_CHUNK_SIZE)
                 )
             )
-            self.__logger.info(f"Starting upload for {name}...")
+            self.__logger.info(f"Starting upload...")
             if not chunked:
-                new_file = request.execute()
+                return request.execute()
 
-            else:
-                # Chunk uploads work progressively and will show status updates in console
-                while True:
-                    status, response = request.next_chunk(num_retries=max_attempts)
-                    pbar_max = 50
-                    if status:
-                        progress = int(status.progress() * 100)
-                        pbar_len = int(status.progress() * pbar_max)
-                        progress_bar = ("#" * pbar_len) + ("-" * (pbar_max - pbar_len))
-                        self.__logger.info(f"Upload progress {progress}% [{progress_bar}]")
-                    if response is not None:
-                        self.__logger.info(f"Upload progress 100% [{"#" * pbar_max}]")
-                        new_file = response
-                        break
-            return new_file
+            while True:
+                status, response = request.next_chunk(num_retries=max_attempts)
+                if status:
+                    self.__logger.info(f"Upload progress {make_progress_bar(status.progress())}")
+                if response is not None:
+                    self.__logger.info(f"Upload progress {make_progress_bar(1)}")
+                    return response
 
         except HttpError as e:
             raise DriveApiError(f"Failed to upload {name}") from e
+
+    def download_file(self, file_id: str, max_attempts: int = 10):
+        try:
+            request = self.__resource.files().get_media(fileId=file_id)
+            downloaded_file = io.BytesIO()
+            downloader = MediaIoBaseDownload(downloaded_file, request, chunksize=config.DOWNLOAD_CHUNK_SIZE)
+            done = False
+
+            self.__logger.info("Starting download...")
+            while done is False:
+                status, done = downloader.next_chunk(num_retries=max_attempts)
+                if status:
+                    self.__logger.info(f"Download progress {make_progress_bar(status.progress())}")
+
+            return downloaded_file.getvalue()
+
+        except HttpError as e:
+            raise DriveApiError(f"Failed to download file with id '{file_id}'") from e
 
     def update_file(self, file_id: str, update_fields: dict) -> dict:
         try:
