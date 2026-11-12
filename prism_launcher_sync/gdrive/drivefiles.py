@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-from pathlib import Path
 from typing import Self
 
 from .apiwrapper import DriveApi, DriveApiError
@@ -16,8 +15,8 @@ class DriveFile(BaseFile):
 
     def __init__(
             self,
-            file_id: str | None,
-            parent_id: str | None,
+            file_id: str | None = None,
+            parent_id: str | None = None,
             view_link: str | None = None,
             content_link: str | None = None,
             **kwargs
@@ -132,7 +131,6 @@ class DriveFileManager:
             raise DriveFileManagerError(f"Could not load Google Drive files in folder {app_folder["name"]}") from e
 
     def sync(self, zip_file: str | os.PathLike[str]) -> None:
-
         if 0 < self.file_count < config.MAX_BACKUPS:
             new_file = DriveFile.from_src(zip_file)
             new_file.parent_id = self.folder.file_id
