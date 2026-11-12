@@ -40,4 +40,4 @@ try:
 
 
 except (argparse.ArgumentError, OSError, TypeError, FileNotFoundError, gdrive.DriveFileManagerError) as e:
-    logger.error(e)
+    logger.error(e, exc_info=config.DEBUG_MODE)
