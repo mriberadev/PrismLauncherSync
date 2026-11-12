@@ -24,6 +24,9 @@ try:
     )
     args = arg_parser.parse_args()
 
+    if not config.ZIPFILES_DIR.exists():
+        config.ZIPFILES_DIR.mkdir()
+
     prism_instance = prismlauncher.Instance.from_src(args.instance)
 
     gd_manager = gdrive.DriveFileManager.load_files()
