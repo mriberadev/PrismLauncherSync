@@ -10,9 +10,8 @@ from prism_launcher_sync import config
 
 class Instance(BaseFile):
 
-    def __init__(self, path: Path, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.path = path
 
     @classmethod
     def from_file_uri(cls, uri) -> Self:

@@ -36,7 +36,8 @@ class DriveFile(BaseFile):
         pass
 
 
-class FileManagerError(Exception):
+
+class DriveFileManagerError(Exception):
     pass
 
 
@@ -78,7 +79,7 @@ class DriveFileManager:
             return app_folder
 
         except DriveApiError as e:
-            raise FileManagerError("Could not load Google Drive folder data") from e
+            raise DriveFileManagerError("Could not load Google Drive folder data") from e
 
     @staticmethod
     def get_app_files(gd_api: DriveApi, app_folder: dict) -> list[dict]:

@@ -1,1 +1,1 @@
-from .drivefiles import DriveFileManager
+from .drivefiles import DriveFileManager, DriveFileManagerError

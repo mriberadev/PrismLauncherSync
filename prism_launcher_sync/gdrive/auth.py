@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow, WSGITimeoutError, Flow
@@ -8,33 +6,33 @@ from oauthlib.oauth2 import AccessDeniedError
 from prism_launcher_sync import config
 
 
-class AppAuthError(Exception):
+class AuthError(Exception):
     pass
 
 
-def get_user_credentials() -> Credentials:
+def get_credentials() -> Credentials:
+
     scopes = ["https://www.googleapis.com/auth/drive.file", ]
 
-    user_credentials = None
+    creds = None
 
     if config.USER_CREDS_FILE.exists():
         try:
-            user_credentials = Credentials.from_authorized_user_file(config.USER_CREDS_FILE.__str__(), scopes)
+            creds = Credentials.from_authorized_user_file(config.USER_CREDS_FILE, scopes)
         except ValueError as e:
             e.add_note("User credentials file in unknown format")
             raise
 
-    if user_credentials:
-        if not user_credentials.valid and user_credentials.expired and user_credentials.refresh_token:
-            user_credentials.refresh(Request())
-        return user_credentials
+    if creds:
+        if not creds.valid and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        return creds
 
     try:
-        auth_flow = get_flow_from_client_file(config.CLIENT_FILE, scopes)
-        user_credentials = get_user_credentials_from_flow(auth_flow)
-        save_user_credentials_to_file(config.USER_CREDS_FILE, user_credentials)
+        creds = request_access(scopes)
+        save_to_file(creds)
 
-        return user_credentials
+        return creds
 
     except (
             TimeoutError,
@@ -42,24 +40,20 @@ def get_user_credentials() -> Credentials:
             FileNotFoundError,
             OSError,
     ) as e:
-        raise AppAuthError("Could not complete auth process") from e
+        raise AuthError("Could not complete auth process") from e
 
 
-def get_flow_from_client_file(client_file_path: Path, scopes: list[str]) -> Flow:
+def request_access(scopes: list[str]) -> Credentials:
     if not config.CLIENT_FILE.exists():
         raise FileNotFoundError("Client file was not found")
-    return InstalledAppFlow.from_client_secrets_file(
-        client_secrets_file=config.CLIENT_FILE.__str__(),
-        scopes=scopes,
-        redirect_uri="http://localhost",
-        pkce="S256"
-    )
 
-
-def get_user_credentials_from_flow(auth_flow: Flow) -> Credentials:
     try:
-        credentials = auth_flow.run_local_server()
-        return credentials
+        return InstalledAppFlow.from_client_secrets_file(
+            client_secrets_file=config.CLIENT_FILE.__str__(),
+            scopes=scopes,
+            redirect_uri="http://localhost",
+            pkce="S256"
+        ).run_local_server()
 
     except WSGITimeoutError as e:
         raise TimeoutError("Authentication timed out") from e
@@ -68,10 +62,10 @@ def get_user_credentials_from_flow(auth_flow: Flow) -> Credentials:
         raise
 
 
-def save_user_credentials_to_file(user_credentials_path: Path, user_credentials: Credentials) -> None:
+def save_to_file(creds: Credentials) -> None:
     try:
-        with user_credentials_path.open("w") as creds_file:
-            creds_file.write(user_credentials.to_json())
+        with config.USER_CREDS_FILE.open("w") as creds_file:
+            creds_file.write(creds.to_json())
     except OSError as e:
         e.add_note("Could not open user credentials file")
         raise

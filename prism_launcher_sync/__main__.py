@@ -1,9 +1,12 @@
 import colorlog
 import argparse
 
-import gdrive
-import prismlauncher
-from utils import logs
+from . import config
+from .utils import logs
+from .base import BaseFile
+
+from . import gdrive
+from . import prismlauncher
 
 logs.config_logger()
 logger = colorlog.getLogger(__name__)
@@ -21,7 +24,7 @@ try:
     )
     args = arg_parser.parse_args()
 
-    prism_instance = prismlauncher.Instance.from_file_uri(args.instance)
+    prism_instance = prismlauncher.Instance.from_uri(args.instance)
 
     gd_manager = gdrive.DriveFileManager.load_files()
 

@@ -1,1 +1,0 @@
-Temp directory for storing zipped instances until uploaded or unzipped
