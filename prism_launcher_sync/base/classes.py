@@ -17,8 +17,8 @@ class BaseFile:
         self.dt_modified = dt_modified
 
     @classmethod
-    def from_uri(cls, uri: str) -> Self:
-        path = Path(uri)
+    def from_src(cls, src: str | os.PathLike[str]) -> Self:
+        path = Path(src)
         if not path.exists():
             raise FileNotFoundError("Could not find file using provided URI")
 
@@ -56,7 +56,7 @@ class BaseFile:
         dir_contents = self.path.iterdir()
         try:
             for item in dir_contents:
-                _file = self.__class__.from_uri(item.__str__())
+                _file = self.__class__.from_src(item)
                 _file.remove()
         except OSError as e:
             e.add_note("Could not clean directory")

@@ -24,7 +24,7 @@ try:
     )
     args = arg_parser.parse_args()
 
-    prism_instance = prismlauncher.Instance.from_uri(args.instance)
+    prism_instance = prismlauncher.Instance.from_src(args.instance)
 
     gd_manager = gdrive.DriveFileManager.load_files()
 
@@ -33,7 +33,7 @@ try:
     gd_manager.sync(zipped_instance.path)
 
     logger.info("Cleaning up temp files...")
-    zip_dir = BaseFile.from_uri(config.ZIPFILES_DIR)
+    zip_dir = BaseFile.from_src(config.ZIPFILES_DIR)
     zip_dir.clean_dir()
 
     logger.info("Sync complete!")

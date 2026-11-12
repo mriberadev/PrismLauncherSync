@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Self
@@ -7,12 +8,25 @@ from prism_launcher_sync.base import BaseFile
 from prism_launcher_sync import config
 
 
+class DriveFileError(Exception):
+    pass
+
+
 class DriveFile(BaseFile):
 
-    def __init__(self, file_id: str | None, parent_id: str | None, **kwargs):
+    def __init__(
+            self,
+            file_id: str | None,
+            parent_id: str | None,
+            view_link: str | None = None,
+            content_link: str | None = None,
+            **kwargs
+    ):
         super().__init__(**kwargs)
         self.file_id = file_id
         self.parent_id = parent_id
+        self.view_link = view_link
+        self.content_link = content_link
 
     @classmethod
     def map_from_drive(cls, drive_file: dict) -> Self:
@@ -20,21 +34,31 @@ class DriveFile(BaseFile):
             file_id=drive_file["id"],
             parent_id=drive_file["parents"][0] if drive_file["parents"] else None,
             name=drive_file["name"],
-            last_modified=datetime.fromisoformat(drive_file["modifiedTime"]).replace(tzinfo=None)
+            view_link=drive_file["webViewLink"][0] if "webViewLink" in drive_file else None,
+            content_link=drive_file["webContentLink"][0] if "webContentLink" in drive_file else None,
+            dt_modified=datetime.fromisoformat(drive_file["modifiedTime"]).replace(tzinfo=None)
         )
 
-    def upload(self) -> str:
-        gd_api = DriveApi.build()
-        new_drivefile = gd_api.upload_file(
-            name=self.name,
-            parent=self.parent_id,
-            src=self.path.__str__(),
-            chunked=True
-        )
+    def upload(self) -> Self:
+        try:
+            gd_api = DriveApi.build()
+            new_drivefile = gd_api.upload_file(
+                name=self.name,
+                parent_id=self.parent_id,
+                src=self.path.__str__(),
+                chunked=True
+            )
+            self.file_id = new_drivefile["id"]
+            return self
 
-    def download(self) -> Path:
+        except DriveApiError as e:
+            raise DriveFileError(f"Could not upload {self.name}") from e
+
+    def download(self) -> Self:
         pass
 
+    def delete(self) -> None:
+        pass
 
 
 class DriveFileManagerError(Exception):
@@ -50,6 +74,22 @@ class DriveFileManager:
     ):
         self.folder = folder
         self.files = files
+
+    @property
+    def file_count(self) -> int:
+        return len(self.files)
+
+    @property
+    def newest_file(self) -> DriveFile | None:
+        if self.file_count == 0:
+            return None
+        return self.files[0]
+
+    @property
+    def oldest_file(self) -> DriveFile | None:
+        if self.file_count == 0:
+            return None
+        return self.files[-1]
 
     @classmethod
     def load_files(cls) -> Self:
@@ -89,20 +129,13 @@ class DriveFileManager:
                 orderBy="modifiedTime desc"
             )
         except DriveApiError as e:
-            raise FileManagerError(f"Could not load Google Drive files in folder {app_folder["name"]}") from e
+            raise DriveFileManagerError(f"Could not load Google Drive files in folder {app_folder["name"]}") from e
 
-    def needs_sync(self, last_modified: datetime) -> bool:
-        return not self.files or self.files[0].last_modified != last_modified
+    def sync(self, zip_file: str | os.PathLike[str]) -> None:
 
-    def sync(self, zip_file: Path, last_modified: datetime) -> None:
-        if not self.files or len(self.files) < config.MAX_BACKUPS or self.files[0].last_modified < last_modified:
-            new_file = DriveFile(
-                file_id=None,
-                parent_id=self.folder.file_id,
-                name=zip_file.name,
-                last_modified=last_modified,
-                path=zip_file
-            )
+        if 0 < self.file_count < config.MAX_BACKUPS:
+            new_file = DriveFile.from_src(zip_file)
+            new_file.parent_id = self.folder.file_id
             new_file.upload()
         else:
             pass
