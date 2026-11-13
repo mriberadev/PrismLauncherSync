@@ -1,3 +1,5 @@
+from venv import logger
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow, WSGITimeoutError, Flow
@@ -48,12 +50,24 @@ def request_access(scopes: list[str]) -> Credentials:
         raise FileNotFoundError("Client file was not found")
 
     try:
-        return InstalledAppFlow.from_client_secrets_file(
+        _flow = InstalledAppFlow.from_client_secrets_file(
             client_secrets_file=config.CLIENT_FILE.__str__(),
             scopes=scopes,
             redirect_uri="http://localhost",
             pkce="S256"
-        ).run_local_server()
+        )
+
+        auth_url, _ = _flow.authorization_url()
+        _AUTH_PROMPT = f"Please open this URL if your browser doesn't do it for you: {auth_url}"
+        _AUTH_DONE = f"Authentication complete, you may close your browser window."
+
+        logger.info(_AUTH_PROMPT)
+        creds = _flow.run_local_server(
+            authorization_prompt_message=None,
+            success_message=_AUTH_DONE,
+        )
+        logger.info(_AUTH_DONE)
+        return creds
 
     except WSGITimeoutError as e:
         raise TimeoutError("Authentication timed out") from e

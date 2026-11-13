@@ -1,9 +1,21 @@
+import sys
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).parent
+if getattr(sys, 'frozen', False) and hasattr(sys, "_MEIPASS"):
+    # If the application is run as a bundle, the PyInstaller bootloader
+    # extends the sys module by a flag frozen=True and sets the app
+    # path into variable _MEIPASS'.
+    PYTHON_SCRIPT = False
+    ROOT_DIR = Path(sys._MEIPASS).resolve()
+    json_path = ROOT_DIR
+else:
+    PYTHON_SCRIPT = True
+    ROOT_DIR = Path(__file__).parent
+    json_path = (ROOT_DIR / "gdrive").resolve()
+
 ZIPFILES_DIR = (ROOT_DIR / "temp").resolve()
-CLIENT_FILE = (ROOT_DIR / "gdrive" / "resource" / "client_secret.json").resolve()
-USER_CREDS_FILE = (ROOT_DIR / "gdrive" / "resource" / "user_credentials.json").resolve()
+CLIENT_FILE = (json_path / "resource" / "client_secret.json").resolve()
+USER_CREDS_FILE = (json_path / "resource" / "user_credentials.json").resolve()
 
 DEBUG_MODE = False
 

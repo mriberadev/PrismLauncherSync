@@ -239,10 +239,12 @@ class DriveFileManager:
             if gd_folder.child_count == 0 or gd_folder.children[_latest].dt_modified < instance.dt_modified:
                 _zip = Path(instance.export_zip())
                 # noinspection bad-argument-type
-                DriveFile(
+                gd_file = DriveFile(
                     name=_zip.name,
                     parent_id=gd_folder.file_id
-                ).create(gd_api=self._api, is_folder=False, src=_zip)
+                )
+                gd_file.create(gd_api=self._api, is_folder=False, src=_zip)
+                gd_folder.children.append(gd_file)
             else:
                 _zip = gd_folder.children[_latest].download(gd_api=self._api, dst=config.ZIPFILES_DIR)
                 instance.import_zip(_zip)

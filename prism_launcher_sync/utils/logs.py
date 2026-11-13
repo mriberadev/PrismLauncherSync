@@ -1,7 +1,8 @@
+import os
 import colorlog
 
-
 def config_logger():
+    os.environ["FORCE_COLOR"] = "True"
     colorlog.basicConfig(
         level=colorlog.INFO,
         log_colors={
