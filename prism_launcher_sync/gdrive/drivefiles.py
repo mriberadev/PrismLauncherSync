@@ -1,11 +1,12 @@
 import os
-from datetime import datetime
+from pathlib import Path
 from typing import Self
+from datetime import datetime
 
-from prismlauncher import Instance
-from .apiwrapper import DriveApi, DriveApiError
-from prism_launcher_sync.base import BaseFile
 from prism_launcher_sync import config
+from prism_launcher_sync.base import BaseFile
+from prism_launcher_sync.prismlauncher import Instance
+from prism_launcher_sync.gdrive.apiwrapper import DriveApi, DriveApiError
 
 
 class DriveFileError(Exception):
@@ -16,69 +17,151 @@ class DriveFile(BaseFile):
 
     def __init__(
             self,
+            name: str,
+            dt_modified: datetime | None = None,
+            path: str | os.PathLike[str] | None = None,
             file_id: str | None = None,
-            parent_id: str | None = None,
+            parent_id: str = "root",
+            is_folder: bool = False,
             view_link: str | None = None,
             content_link: str | None = None,
-            **kwargs
+            children: list[Self] | None = None
     ):
-        super().__init__(**kwargs)
+        super().__init__(
+            name=name,
+            dt_modified=dt_modified,
+            path=path
+        )
+        self.name = name
+        self.path = path
+        self.dt_modified = dt_modified
         self.file_id = file_id
         self.parent_id = parent_id
+        self.is_folder = is_folder
         self.view_link = view_link
         self.content_link = content_link
+        self.children = children if children else []
 
-    @classmethod
-    def map_from_drive(cls, drive_file: dict) -> Self:
-        return cls(
-            file_id=drive_file["id"],
-            parent_id=drive_file["parents"][0] if drive_file["parents"] else None,
-            name=drive_file["name"],
-            view_link=drive_file["webViewLink"][0] if "webViewLink" in drive_file else None,
-            content_link=drive_file["webContentLink"][0] if "webContentLink" in drive_file else None,
-            dt_modified=datetime.fromisoformat(drive_file["modifiedTime"]).replace(tzinfo=None)
-        )
+    @property
+    def child_count(self) -> int:
+        return len(self.children)
 
-    def upload(self) -> Self:
+    @staticmethod
+    def to_datetime(gd_date: str) -> datetime:
+        return datetime.fromisoformat(gd_date).replace(tzinfo=None)
+
+    def map_from_drive(self, drive_file: dict) -> None:
+        self.file_id = drive_file["id"]
+        self.view_link = drive_file["webViewLink"][0] if "webViewLink" in drive_file else None
+        self.content_link = drive_file["webContentLink"][0] if "webContentLink" in drive_file else None
+        self.dt_modified = DriveFile.to_datetime(drive_file["modifiedTime"])
+
+    def map_to_drive(self) -> dict:
+        return {
+            "parents": [self.parent_id],
+            "name": self.name,
+        }
+
+    def get(self, gd_api: DriveApi):
         try:
-            gd_api = DriveApi.build()
-            new_drivefile = gd_api.upload_file(
+            if not self.file_id:
+                raise AttributeError
+            gd_list = gd_api.get(file_id=self.file_id)
+            for child in gd_list:
+                gd_child = self.__class__(
+                    name=child["name"],
+                    parent_id=self.parent_id
+                )
+                gd_child.map_from_drive(child)
+                self.children.append(gd_child)
+        except (DriveApiError, AttributeError) as e:
+            raise DriveFileError(f"Failed to get file") from e
+
+    def get_child(self, file_id: str | None = None, name: str | None = None) -> DriveFile | None:
+        return next((child for child in self.children if child.file_id == file_id or child.name == name), None)
+
+    def get_children(self, gd_api: DriveApi):
+        try:
+            if not self.file_id:
+                raise AttributeError
+            gd_list = gd_api.list(
+                query=f"'{self.file_id}' in parents and trashed=false",
+                order_by="modifiedTime"
+            )
+            for child in gd_list:
+                gd_child = self.__class__(
+                    name=child["name"],
+                    parent_id=self.file_id
+                )
+                gd_child.map_from_drive(child)
+                self.children.append(gd_child)
+        except (DriveApiError, AttributeError) as e:
+            raise DriveFileError(f"Failed to get children") from e
+
+    def create(
+            self,
+            gd_api: DriveApi,
+            is_folder: bool,
+            src: str | os.PathLike[str] | None = None,
+    ) -> None:
+        try:
+            gd_file = gd_api.create(
                 name=self.name,
                 parent_id=self.parent_id,
-                src=self.path.__str__(),
-                chunked=True
+                is_folder=is_folder,
+                src=src
             )
-            self.file_id = new_drivefile["id"]
-            return self
+            self.map_from_drive(gd_file)
 
         except DriveApiError as e:
-            raise DriveFileError(f"Failed to upload {self.name}") from e
+            raise DriveFileError(f"Failed to create file") from e
 
-    def download(self) -> Self:
-        if not self.file_id:
-            raise AttributeError("DriveFile has no id")
+    def update(self, gd_api: DriveApi) -> None:
         try:
-            gd_api = DriveApi.build()
-            content = gd_api.download_file(file_id=self.file_id)
+            if not self.file_id:
+                raise AttributeError
 
-            self.path = (config.ZIPFILES_DIR / self.name).resolve()
-            with open(self.path, "wb") as dst_file:
-                dst_file.write(content)
-            return self
+            gd_updated = None
+            gd_file = gd_api.update(
+                file_id=self.file_id,
+                updated_fields=self.map_to_drive()
+            )
+            self.map_from_drive(gd_file)
 
-        except DriveApiError as e:
-            raise DriveFileError(f"Failed to download {self.name}") from e
+        except (AttributeError, DriveApiError) as e:
+            raise DriveFileError(f"Failed to create file") from e
 
-    def delete(self) -> None:
-        if not self.file_id:
-            raise AttributeError("DriveFile has no id")
-
+    def download(
+            self,
+            gd_api: DriveApi,
+            dst: str | os.PathLike[str]
+    ) -> str:
         try:
-            gd_api = DriveApi.build()
-            gd_api.delete_file(file_id=self.file_id)
+            if not self.file_id:
+                raise AttributeError
 
-        except DriveApiError as e:
-            raise DriveFileError(f"Failed to delete {self.name}") from e
+            dst = Path(dst)
+            if not dst.exists():
+                raise FileNotFoundError
+
+            dst = dst.joinpath(self.name).resolve()
+            content = gd_api.download(file_id=self.file_id)
+            with open(dst, "wb") as f:
+                f.write(content)
+
+            return str(dst)
+
+        except (AttributeError, FileNotFoundError, DriveApiError) as e:
+            raise DriveFileError(f"Failed to download file") from e
+
+    def delete(self, gd_api: DriveApi) -> None:
+        try:
+            if not self.file_id:
+                raise AttributeError
+            gd_api.delete(file_id=self.file_id)
+
+        except (AttributeError, DriveApiError) as e:
+            raise DriveFileError(f"Failed to delete file") from e
 
 
 class DriveFileManagerError(Exception):
@@ -89,76 +172,83 @@ class DriveFileManager:
 
     def __init__(
             self,
-            folder: DriveFile,
-            files: list[DriveFile]
+            _root: DriveFile,
+            _api: DriveApi
     ):
-        self.folder = folder
-        self.files = files
+        self._root = _root
+        self._api = _api
 
-    @property
-    def file_count(self) -> int:
-        return len(self.files)
-
-    @classmethod
-    def load_files(cls) -> Self:
-        gd_api = DriveApi.build()
-
-        app_folder = cls.get_app_folder(gd_api, config.DRIVE_FOLDER)
-        app_files = cls.get_app_files(gd_api, app_folder)
-
-        return cls(
-            DriveFile.map_from_drive(app_folder),
-            [DriveFile.map_from_drive(f) for f in app_files]
-        )
-
-    @staticmethod
-    def get_app_folder(gd_api: DriveApi, name: str) -> dict:
+    def set_root(self) -> None:
         try:
-            folders = gd_api.list_files(f"name = '{name}' and mimeType = 'application/vnd.google-apps.folder'")
-
-            if not folders:
-                return gd_api.create_folder(name)
-
-            app_folder = folders[0]
-
-            if app_folder["trashed"]:
-                return gd_api.update_file(app_folder["id"], {"trashed": False})
-
-            return app_folder
-
-        except DriveApiError as e:
-            raise DriveFileManagerError("Failed to load Google Drive folder data") from e
-
-    @staticmethod
-    def get_app_files(gd_api: DriveApi, app_folder: dict) -> list[dict]:
-        try:
-            return gd_api.list_files(
-                query=f"'{app_folder["id"]}' in parents and trashed=false",
-                orderBy="modifiedTime desc"
+            gd_list = self._api.list(
+                query=f"'root' in parents and name='{config.DRIVE_FOLDER}' and trashed=false"
             )
-        except DriveApiError as e:
-            raise DriveFileManagerError(f"Failed to load Google Drive files in folder {app_folder["name"]}") from e
+            if not gd_list:
+                self._root = DriveFile(
+                    name=config.DRIVE_FOLDER,
+                    parent_id="root",
+                    dt_modified=datetime.now()
+                )
+                self._root.create(gd_api=self._api, is_folder=True)
+                return None
 
-    def remove_oldest(self) -> None:
-        if self.file_count > 0:
-            try:
-                self.files[-1].delete()
-                self.files.pop()  # Update .files list preserving order
-            except AttributeError:
-                raise
+            if len(gd_list) > 1:
+                raise DriveFileManagerError(f"Multiple folders named '{config.DRIVE_FOLDER}' found")
+
+            self._root.map_from_drive(gd_list[0])
+
+        except (DriveApiError, DriveFileError, DriveFileManagerError) as e:
+            raise DriveFileManagerError("Failed to retrieve root folder") from e
+
+    def map_from_drive(self) -> None:
+        try:
+            # Get app root folder in drive
+            self.set_root()
+
+            # Get root children
+            self._root.get_children(gd_api=self._api)
+
+            # Get children for each folder instance
+            for gd_folder in self._root.children:
+                gd_folder.get_children(gd_api=self._api)
+
+        except DriveApiError as e:
+            raise DriveFileManagerError("Failed to load Google Drive files") from e
 
     def sync_instance(self, instance: Instance) -> None:
-        if self.file_count == 0 or self.files[0].dt_modified < instance.dt_modified:
-            src = instance.to_zip().path
-            gd_file = DriveFile.from_src(src)
-            gd_file.parent_id = self.folder.file_id
-            self.files.insert(0, gd_file.upload())  # Update .files list preserving order
-        else:
-            self.files[0].download()
-            pass
+        try:
+            if not self._root or not self._root.file_id:
+                raise AttributeError("Root dir not set")
 
-        if self.file_count > config.MAX_BACKUPS:
-            try:
-                self.remove_oldest()
-            except AttributeError as e:
-                raise DriveFileManagerError("Failed to remove oldest backup") from e
+            gd_folder = self._root.get_child(name=instance.name)
+            if not gd_folder:
+                gd_folder = DriveFile(
+                    name=instance.name,
+                    parent_id=self._root.file_id
+                )
+                gd_folder.create(gd_api=self._api, is_folder=True)
+
+            if not instance.dt_modified:
+                raise AttributeError("No instance date to compare")
+
+            # Indexes for readability
+            _latest = 0
+            _oldest = -1
+
+            # Upload if backup folder is empty or last backup is older than current instance, else download
+            if gd_folder.child_count == 0 or gd_folder.children[_latest].dt_modified < instance.dt_modified:
+                _zip = Path(instance.export_zip())
+                # noinspection bad-argument-type
+                DriveFile(
+                    name=_zip.name,
+                    parent_id=gd_folder.file_id
+                ).create(gd_api=self._api, is_folder=False, src=_zip)
+            else:
+                gd_folder.children[_latest].download(gd_api=self._api, dst=config.ZIPFILES_DIR)
+                # instance.import_zip()
+
+            if gd_folder.child_count > config.MAX_BACKUPS:
+                gd_folder.children[_oldest].delete(gd_api=self._api)
+
+        except (AttributeError, DriveFileError) as e:
+            raise DriveFileManagerError(f"Failed to sync instance {instance.name}") from e

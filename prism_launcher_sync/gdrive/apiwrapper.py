@@ -1,8 +1,10 @@
+import os
 import io
 from logging import Logger
+from pathlib import Path
+from typing import Self
 
 import colorlog
-from typing import Self
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -43,7 +45,7 @@ class DriveApi:
         except auth.AuthError as e:
             raise DriveApiError("Failed to complete auth process") from e
 
-    def list_files(self, query: str | None = None, orderBy: str | None = None) -> list[dict]:
+    def list(self, query: str | None = None, order_by: str | None = None) -> list[dict]:
         try:
             files = []
             page_token = None
@@ -55,7 +57,7 @@ class DriveApi:
                         spaces="drive",
                         fields="nextPageToken, files",
                         pageToken=page_token,
-                        orderBy=orderBy
+                        orderBy=order_by
                     )
                     .execute()
                 )
@@ -66,45 +68,48 @@ class DriveApi:
         except HttpError as e:
             raise DriveApiError("Failed to obtain files") from e
 
-    def get_file(self, file_id: str) -> dict:
+    def get(self, file_id: str) -> dict:
         try:
             return self.__resource.files().get(fileId=file_id).execute()
         except HttpError as e:
             raise DriveApiError(f"Failed to obtain file with id: '{file_id}") from e
 
-    def create_folder(self, name: str) -> dict:
-        try:
-            new_folder = (
-                self.__resource.files()
-                .create(
-                    body={"name": name, "mimeType": "application/vnd.google-apps.folder"},
-                )
-                .execute()
-            )
-            return new_folder
-        except HttpError as e:
-            raise DriveApiError(f"Failed to create folder '{name}'") from e
-
-    def upload_file(
+    def create(
             self,
             name: str,
-            src: str,
-            parent_id: str | None = None,
-            chunked: bool = False,
-            max_attempts: int = 10
+            parent_id: str,
+            is_folder: bool,
+            src: str | os.PathLike[str] | None = None,
+            max_attempts: int = config.UPLOAD_MAX_ATTEMPTS
     ) -> dict:
+        body = {
+            "name": name,
+            "parents": [parent_id],
+        }
         try:
+            if is_folder:
+                body["mimeType"] = "application/vnd.google-apps.folder"
+                media_body = None
+            else:
+                if not src:
+                    raise ValueError("File upload requires 'src' argument")
+                src_path = Path(src)
+                if not src_path.exists():
+                    raise FileNotFoundError
+                media_body = MediaFileUpload(src, resumable=True, chunksize=config.UPLOAD_CHUNK_SIZE)
+
             request = (
                 self.__resource.files()
                 .create(
-                    body={"name": name, "parents": [parent_id] if parent_id else []},
-                    media_body=MediaFileUpload(src, resumable=chunked, chunksize=config.UPLOAD_CHUNK_SIZE)
+                    body=body,
+                    media_body=media_body,
+                    fields="id, modifiedTime, webViewLink, webContentLink"
                 )
             )
-            self.__logger.info(f"Starting upload...")
-            if not chunked:
+            if is_folder:
                 return request.execute()
 
+            self.__logger.info(f"Starting upload...")
             while True:
                 status, response = request.next_chunk(num_retries=max_attempts)
                 if status:
@@ -113,10 +118,14 @@ class DriveApi:
                     self.__logger.info(f"Upload progress {make_progress_bar(1)}")
                     return response
 
-        except HttpError as e:
-            raise DriveApiError(f"Failed to upload {name}") from e
+        except (ValueError, FileNotFoundError, HttpError) as e:
+            raise DriveApiError(f"Failed to create {name}") from e
 
-    def download_file(self, file_id: str, max_attempts: int = 10):
+    def download(
+            self,
+            file_id: str,
+            max_attempts: int = config.DOWNLOAD_MAX_ATTEMPTS
+    ) -> bytes:
         try:
             request = self.__resource.files().get_media(fileId=file_id)
             downloaded_file = io.BytesIO()
@@ -134,13 +143,13 @@ class DriveApi:
         except HttpError as e:
             raise DriveApiError(f"Failed to download file with id '{file_id}'") from e
 
-    def update_file(self, file_id: str, update_fields: dict) -> dict:
+    def update(self, file_id: str, updated_fields: dict) -> dict:
         try:
             updated_file = (
                 self.__resource.files()
                 .update(
                     fileId=file_id,
-                    body=update_fields,
+                    body=updated_fields,
                 )
                 .execute()
             )
@@ -148,7 +157,7 @@ class DriveApi:
         except HttpError as e:
             raise DriveApiError(f"Failed to update file with id: '{file_id}'") from e
 
-    def delete_file(self, file_id: str) -> None:
+    def delete(self, file_id: str) -> None:
         try:
             self.__resource.files().delete(fileId=file_id).execute()
         except HttpError as e:

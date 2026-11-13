@@ -1,35 +1,59 @@
-import colorlog
-from datetime import datetime
+import os
 from pathlib import Path
+from datetime import datetime
 from typing import Self
+
+import colorlog
 import shutil
 
-from prism_launcher_sync.base import BaseFile
 from prism_launcher_sync import config
+from prism_launcher_sync.base import BaseFile
+
+if not config.ZIPFILES_DIR.exists():
+    config.ZIPFILES_DIR.mkdir()
+
+
+class InstanceError(Exception):
+    pass
 
 
 class Instance(BaseFile):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def to_zip(self) -> Self:
-        if not self.path:
-            raise TypeError("No file to zip")
-        if not self.path.exists():
-            raise FileNotFoundError("File to zip not found")
-
-        logger = colorlog.getLogger(__name__)
-        dt_suffix = datetime.now().strftime("_%Y%m%d_%H%M%S")
-        zip_name = f"{self.name}{dt_suffix}"
-        zip_dst = str((config.ZIPFILES_DIR / zip_name).resolve())
-        logger.info(f"Zipping instance {self.name}...")
-        zip_file = shutil.make_archive(
-            zip_dst,
-            format="zip",
-            root_dir=self.path.parent,
-            base_dir=self.name,
-            dry_run=False,
+    def __init__(
+            self,
+            name: str,
+            dt_modified: datetime | None = None,
+            path: str | os.PathLike[str] | None = None,
+    ):
+        super().__init__(
+            name=name,
+            path=path,
+            dt_modified=dt_modified
         )
-        logger.info(f"Zipped to {zip_file}")
-        return self.__class__.from_src(zip_file)
+
+    def export_zip(self) -> str:
+        try:
+
+            if not self.path:
+                raise AttributeError("No file to zip")
+
+            self.path = Path(self.path)
+            if not self.path.exists():
+                raise FileNotFoundError("File to zip not found")
+
+            logger = colorlog.getLogger(__name__)
+
+            dt_suffix = datetime.now().strftime("_%Y%m%d_%H%M%S")
+            _zip = config.ZIPFILES_DIR.joinpath(f"{self.name}{dt_suffix}").resolve()
+
+            logger.info(f"Zipping instance {self.name}...")
+            return shutil.make_archive(
+                str(_zip),
+                format="zip",
+                root_dir=self.path.parent,
+                base_dir=self.name,
+                dry_run=False,
+                logger=None
+            )
+        except (AttributeError, FileNotFoundError) as e:
+            raise InstanceError("Failed to zip instance")
