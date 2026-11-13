@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from datetime import datetime
-from typing import Self
 
 import colorlog
 import shutil
@@ -22,38 +21,47 @@ class Instance(BaseFile):
     def __init__(
             self,
             name: str,
+            path: str | os.PathLike[str],
             dt_modified: datetime | None = None,
-            path: str | os.PathLike[str] | None = None,
     ):
         super().__init__(
             name=name,
             path=path,
             dt_modified=dt_modified
         )
+        self.name = name
+        self.path = path
+        self.dt_modified = dt_modified
 
     def export_zip(self) -> str:
+        logger = colorlog.getLogger(__name__)
+
+        dt_suffix = datetime.now().strftime("_%Y%m%d_%H%M%S")
+        _zip = config.ZIPFILES_DIR.joinpath(f"{self.name}{dt_suffix}").resolve()
+
+        logger.info(f"Zipping instance {self.name}...")
+        return shutil.make_archive(
+            str(_zip),
+            format="zip",
+            root_dir=self.path,
+            dry_run=False,
+            logger=None
+        )
+
+    def import_zip(self, src: str | os.PathLike[str]) -> None:
         try:
-
-            if not self.path:
-                raise AttributeError("No file to zip")
-
-            self.path = Path(self.path)
-            if not self.path.exists():
-                raise FileNotFoundError("File to zip not found")
+            src = Path(src)
+            if not src.exists():
+                raise FileNotFoundError("Zip to import not found")
 
             logger = colorlog.getLogger(__name__)
 
-            dt_suffix = datetime.now().strftime("_%Y%m%d_%H%M%S")
-            _zip = config.ZIPFILES_DIR.joinpath(f"{self.name}{dt_suffix}").resolve()
-
-            logger.info(f"Zipping instance {self.name}...")
-            return shutil.make_archive(
-                str(_zip),
-                format="zip",
-                root_dir=self.path.parent,
-                base_dir=self.name,
-                dry_run=False,
-                logger=None
+            logger.info(f"Importing instance {self.name}...")
+            shutil.unpack_archive(
+                filename=src,
+                extract_dir=self.path,
+                format="zip"
             )
+
         except (AttributeError, FileNotFoundError) as e:
             raise InstanceError("Failed to zip instance")

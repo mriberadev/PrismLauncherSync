@@ -29,7 +29,7 @@ class BaseFile:
         return cls(
             path=path,
             name=path.name,
-            dt_modified=datetime.fromtimestamp(path.stat().st_mtime)
+            dt_modified=datetime.fromtimestamp(path.stat().st_mtime).astimezone()
         )
 
     def remove(self) -> None:

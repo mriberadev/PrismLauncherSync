@@ -48,7 +48,7 @@ class DriveFile(BaseFile):
 
     @staticmethod
     def to_datetime(gd_date: str) -> datetime:
-        return datetime.fromisoformat(gd_date).replace(tzinfo=None)
+        return datetime.fromisoformat(gd_date).astimezone()
 
     def map_from_drive(self, drive_file: dict) -> None:
         self.file_id = drive_file["id"]
@@ -232,10 +232,10 @@ class DriveFileManager:
                 raise AttributeError("No instance date to compare")
 
             # Indexes for readability
-            _latest = 0
-            _oldest = -1
+            _latest = -1
+            _oldest = 0
 
-            # Upload if backup folder is empty or last backup is older than current instance, else download
+            # Upload if backup folder is empty or current instance is newer than last backup, else download
             if gd_folder.child_count == 0 or gd_folder.children[_latest].dt_modified < instance.dt_modified:
                 _zip = Path(instance.export_zip())
                 # noinspection bad-argument-type
@@ -244,8 +244,8 @@ class DriveFileManager:
                     parent_id=gd_folder.file_id
                 ).create(gd_api=self._api, is_folder=False, src=_zip)
             else:
-                gd_folder.children[_latest].download(gd_api=self._api, dst=config.ZIPFILES_DIR)
-                # instance.import_zip()
+                _zip = gd_folder.children[_latest].download(gd_api=self._api, dst=config.ZIPFILES_DIR)
+                instance.import_zip(_zip)
 
             if gd_folder.child_count > config.MAX_BACKUPS:
                 gd_folder.children[_oldest].delete(gd_api=self._api)
