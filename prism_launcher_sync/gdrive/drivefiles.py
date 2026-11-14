@@ -252,3 +252,16 @@ class DriveFileManager:
 
         except (AttributeError, DriveFileError) as e:
             raise DriveFileManagerError(f"Failed to sync instance {instance.name}") from e
+
+    def last_backup_for_instance(self, instance: Instance) -> DriveFile:
+        try:
+            if not self._root or not self._root.file_id:
+                raise AttributeError("Root dir not set")
+
+            gd_folder = self._root.get_child(name=instance.name)
+            if gd_folder.child_count > 0:
+                return gd_folder.children[-1]
+            return None
+
+        except (AttributeError, DriveFileError) as e:
+            raise DriveFileManagerError(f"Failed to sync instance {instance.name}") from e

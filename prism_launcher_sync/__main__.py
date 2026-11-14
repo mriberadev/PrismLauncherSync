@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import time
 
 import colorlog
 import argparse
@@ -24,6 +25,11 @@ try:
         "-i", "--instance",
         type=str,
         required=True
+    )
+    arg_parser.add_argument(
+        "--ask",
+        action=argparse.BooleanOptionalAction,
+        required=False
     )
     arg_parser.add_argument(
         "--debug",
@@ -59,6 +65,22 @@ try:
 
     prism_instance = prismlauncher.Instance.from_src(args.instance)
 
+    # Ask the user if they want to sync their instance
+    last_backup = gd_manager.last_backup_for_instance(prism_instance)
+    last_backup_date_str = last_backup.dt_modified.strftime("%Y-%m-%d %H:%M:%S") if last_backup else "No backups"
+    instance_date_str = prism_instance.dt_modified.strftime("%Y-%m-%d %H:%M:%S")
+    menu = (
+        "\n"
+        f"-- {prism_instance.name} --\n"
+        f"Most recent backup: {last_backup_date_str}\n"
+        f"Most recent savefile: {instance_date_str}\n"
+        "Would you like to sync this instance to drive? (y/N):"
+    )
+    logger.info(menu)
+    menu_choice = input()
+    if menu_choice.lower().strip() != "y":
+        sys.exit()
+
     logger.info("Sync process starting...")
     gd_manager.sync_instance(prism_instance)
 
@@ -69,5 +91,5 @@ try:
     logger.info("Sync complete!")
 
 
-except (argparse.ArgumentError, gdrive.DriveFileManagerError, gdrive.DriveApiError, base.BaseFileException) as e:
+except (argparse.ArgumentError, gdrive.DriveFileManagerError, gdrive.DriveApiError, base.BaseFileError) as e:
     logger.error(e, exc_info=config.DEBUG_MODE)
