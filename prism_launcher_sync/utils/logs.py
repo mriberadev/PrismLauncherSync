@@ -7,15 +7,14 @@ def config_logger():
         level=colorlog.INFO,
         log_colors={
             "DEBUG": "cyan",
-            "INFO": "blue",
+            "INFO": "light_blue",
             "WARNING": "yellow",
             "ERROR": "red",
             "CRITICAL": "bold_red,bg_bold_white",
         },
-        format=("%(log_color)s[%(asctime)s.%(msecs)03d]"
-                " [%(levelname)s]"
-                " %(green)s[%(name)s]"
-                " %(light_white)s%(message)s %(white)s"
-                " (%(filename)s:%(lineno)d)%(reset)s"),
+        format=("%(white)s[%(asctime)s.%(msecs)03d]"
+                " %(log_color)s[%(levelname)s]"
+                " %(green)s[%(module)s:%(lineno)d]"
+                " %(light_white)s%(message)s%(reset)s"),
         datefmt="%Y-%m-%d %H:%M:%S",
     )
