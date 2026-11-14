@@ -1,1 +1,1 @@
-from .classes import BaseFile, BaseFileException
+from .classes import BaseFile, BaseFileError

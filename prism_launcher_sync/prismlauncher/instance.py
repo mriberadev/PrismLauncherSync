@@ -20,18 +20,14 @@ class Instance(BaseFile):
 
     def __init__(
             self,
-            name: str,
-            path: str | os.PathLike[str],
-            dt_modified: datetime | None = None,
+            **kwargs,
     ):
-        super().__init__(
-            name=name,
-            path=path,
-            dt_modified=dt_modified
-        )
-        self.name = name
-        self.path = path
-        self.dt_modified = dt_modified
+        super().__init__(**kwargs)
+        if self.path:
+            self.path = Path(self.path)
+            savefile_dir = Path(self.path / "minecraft" / "saves").resolve()
+            self.dt_modified = datetime.fromtimestamp(savefile_dir.stat().st_mtime).astimezone()
+
 
     def export_zip(self) -> str:
         logger = colorlog.getLogger(__name__)
@@ -64,4 +60,4 @@ class Instance(BaseFile):
             )
 
         except (AttributeError, FileNotFoundError) as e:
-            raise InstanceError("Failed to zip instance")
+            raise InstanceError("Failed to zip instance") from e

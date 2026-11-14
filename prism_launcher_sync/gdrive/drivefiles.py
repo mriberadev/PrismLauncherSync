@@ -121,7 +121,6 @@ class DriveFile(BaseFile):
             if not self.file_id:
                 raise AttributeError
 
-            gd_updated = None
             gd_file = gd_api.update(
                 file_id=self.file_id,
                 updated_fields=self.map_to_drive()
@@ -238,7 +237,6 @@ class DriveFileManager:
             # Upload if backup folder is empty or current instance is newer than last backup, else download
             if gd_folder.child_count == 0 or gd_folder.children[_latest].dt_modified < instance.dt_modified:
                 _zip = Path(instance.export_zip())
-                # noinspection bad-argument-type
                 gd_file = DriveFile(
                     name=_zip.name,
                     parent_id=gd_folder.file_id

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Self
 
 
-class BaseFileException(Exception):
+class BaseFileError(Exception):
     pass
 
 
@@ -13,8 +13,8 @@ class BaseFile:
     def __init__(
             self,
             name: str,
-            dt_modified: datetime | None = None,
             path: str | os.PathLike[str] | None = None,
+            dt_modified: datetime | None = None,
     ):
         self.name = name
         self.path = path
@@ -47,7 +47,7 @@ class BaseFile:
                 self.path.unlink()
 
         except (AttributeError, OSError) as e:
-            raise BaseFileException("Failed to remove file") from e
+            raise BaseFileError("Failed to remove file") from e
 
     def clean_dir(self) -> None:
         try:
@@ -65,5 +65,5 @@ class BaseFile:
             for item in dir_contents:
                 self.__class__.from_src(item).remove()
 
-        except (AttributeError, FileNotFoundError, ValueError, BaseFileException) as e:
-            raise BaseFileException("Failed to clean directory") from e
+        except (AttributeError, FileNotFoundError, ValueError, BaseFileError) as e:
+            raise BaseFileError("Failed to clean directory") from e
