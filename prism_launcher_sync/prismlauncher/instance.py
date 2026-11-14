@@ -25,7 +25,7 @@ class Instance(BaseFile):
         super().__init__(**kwargs)
         if self.path:
             self.path = Path(self.path)
-            savefile_dir = Path(self.path / "minecraft" / "saves").resolve()
+            savefile_dir = list(Path(self.path / "minecraft" / "saves").iterdir())[0]
             self.dt_modified = datetime.fromtimestamp(savefile_dir.stat().st_mtime).astimezone()
 
 
